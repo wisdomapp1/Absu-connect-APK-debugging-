@@ -1,0 +1,50 @@
+
+name: Build ABSU Connect APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Get source code
+        uses: actions/checkout@v4
+
+      - name: Extract ABSU Connect ZIP
+        run: |
+          mkdir source
+          unzip -q "absu-connect (9).zip" -d source
+
+      - name: Find Android project
+        id: project
+        run: |
+          WRAPPER=$(find source -type f -name gradlew | head -n 1)
+          if [ -z "$WRAPPER" ]; then
+            echo "Gradle wrapper not found"
+            exit 1
+          fi
+          ROOT=$(dirname "$WRAPPER")
+          echo "root=$ROOT" >> "$GITHUB_OUTPUT"
+          chmod +x "$WRAPPER"
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Build APK
+        run: |
+          cd "${{ steps.project.outputs.root }}"
+          ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ABSU-Connect-debug-APK
+          path: source/**/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 1
+          
